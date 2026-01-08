@@ -1,68 +1,74 @@
 import streamlit as st
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
 
-# ⚠️ REPLACE THIS WITH YOUR ACTUAL USERNAME ⚠️
-YOUR_HF_USERNAME = "matt0293"  # CHANGE THIS!
+# ⚠️ REPLACE WITH YOUR USERNAME ⚠️
+YOUR_HF_USERNAME = "matthieu2312"  # CHANGE THIS!
 MODEL_NAME = f"{YOUR_HF_USERNAME}/math-tutor-llama"
 
 st.set_page_config(page_title="AI Algebra Tutor", page_icon="🧮")
 
 st.title("🧮 AI Algebra Tutor")
-st.markdown(f"Using model: `{MODEL_NAME}`")
+st.markdown(f"Model: `{MODEL_NAME}`")
 
-# Load from Hugging Face
+# Initialize chat
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Hi! I help with algebra problems. Try: 'Solve 2x + 5 = 13'"}
+    ]
+
+# Simple model loader (no PEFT for now)
 @st.cache_resource
-def load_tutor():
+def load_simple_model():
     try:
-        with st.spinner("Loading AI model from Hugging Face..."):
+        with st.spinner("Loading tutor..."):
             tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-            
             model = AutoModelForCausalLM.from_pretrained(
                 MODEL_NAME,
-                torch_dtype=torch.float16,
-                device_map="auto"
+                torch_dtype=torch.float32,  # Use float32 for CPU
+                device_map="cpu",  # Force CPU
+                low_cpu_mem_usage=True
             )
-            
-            # Check if it's a PEFT model
-            try:
-                model = PeftModel.from_pretrained(model, MODEL_NAME)
-            except:
-                pass  # Not a PEFT model
-            
-            st.success("✅ Model loaded!")
+            st.success("✅ Ready!")
             return model, tokenizer
     except Exception as e:
-        st.error(f"❌ Failed to load: {e}")
+        st.error(f"Load error: {e}")
+        # Fallback to mock responses
         return None, None
 
-model, tokenizer = load_tutor()
-
-# Chat
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+model, tokenizer = load_simple_model()
 
 # Display chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Input
+# Chat input
 if prompt := st.chat_input("Ask algebra question..."):
-    # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Generate response
     with st.chat_message("assistant"):
-        with st.spinner("Solving..."):
+        with st.spinner("Thinking..."):
             try:
                 if model and tokenizer:
-                    inputs = tokenizer(prompt, return_tensors="pt")
-                    outputs = model.generate(**inputs, max_new_tokens=300)
+                    # Simple generation
+                    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=200)
+                    with torch.no_grad():
+                        outputs = model.generate(**inputs, max_new_tokens=150)
                     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
                 else:
-                    response = f"Teaching how to solve: {prompt}\n\n1. Identify variables\n2. Isolate x\n3. Solve step-by-step"
+                    # Fallback response
+                    response = f"""**Solution for:** {prompt}
+
+1. Identify the variable (usually x)
+2. Isolate it on one side
+3. Perform inverse operations
+4. Check your solution
+
+Example: For "2x + 5 = 13":
+- Subtract 5: 2x = 8
+- Divide by 2: x = 4
+✅ Solution: x = 4"""
                 
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
@@ -72,13 +78,14 @@ if prompt := st.chat_input("Ask algebra question..."):
 
 # Sidebar
 with st.sidebar:
-    st.header("📚 Examples")
-    examples = ["2x + 5 = 13", "3x - 7 = 14", "2(x + 3) = 10"]
-    for ex in examples:
-        if st.button(f"Solve: {ex}"):
-            st.session_state.messages.append({"role": "user", "content": f"Solve {ex}"})
+    st.header("💡 Examples")
+    for problem in ["2x + 5 = 13", "3x - 7 = 14", "2(x + 3) = 10"]:
+        if st.button(problem):
+            st.session_state.messages.append({"role": "user", "content": f"Solve {problem}"})
             st.rerun()
     
-    if st.button("🗑️ Clear Chat"):
-        st.session_state.messages = []
+    if st.button("🗑️ Clear Chat", type="secondary"):
+        st.session_state.messages = [
+            {"role": "assistant", "content": "Chat cleared! Ask me an algebra problem."}
+        ]
         st.rerun()
