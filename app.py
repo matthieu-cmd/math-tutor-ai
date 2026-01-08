@@ -3,7 +3,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # ⚠️ REPLACE WITH YOUR USERNAME ⚠️
-YOUR_HF_USERNAME = "matthieu2312"  # CHANGE THIS!
+YOUR_HF_USERNAME = "matt0293"  # CHANGE THIS!
 MODEL_NAME = f"{YOUR_HF_USERNAME}/math-tutor-llama"
 
 st.set_page_config(page_title="AI Algebra Tutor", page_icon="🧮")
