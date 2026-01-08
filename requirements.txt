@@ -4,3 +4,4 @@ peft>=0.7.0
 streamlit>=1.28.0
 accelerate>=0.25.0
 safetensors>=0.4.1
+# REMOVE bitsandbytes - not needed for CPU
